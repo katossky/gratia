@@ -2,20 +2,20 @@
 `fix_family_rd` <- function(family, ncores = 1, ...) {
   # try to fix up the family used by mgcv to add the $rd component
   # for random deviate sampling
-
+  
   # try the obvious thing first and see if mgcv::fix.family.rd() already handles
   # family
   fam <- mgcv::fix.family.rd(family)
-
+  
   # if `family` contains a NULL rd we move on, if it is non-null return early
   # as it doesn't need fixing
   if (!is.null(fam$rd)) {
     return(fam)
   }
-
+  
   # handle special cases
   fn <- family_name(fam)
-
+  
   # handle multivariate normal
   if (identical(fn, "Multivariate normal")) {
     # note: mgcv::mvn is documented to ignore prior weights
@@ -47,7 +47,19 @@
     tw_pars <- get_tw_ab(fam)
     fam$rd <- rd_twlss(a = tw_pars[1], b = tw_pars[2])
   }
-
+  if (identical(fn, "scaled t") || identical(fn, "scat")) {
+    # mgcv sometimes uses "scaled t" or "scat" as the family name
+    make_rd_scat <- function(nu, sigma) {
+      function(mu, wt, scale) {
+        n <- NROW(mu)
+        mu + sigma * stats::rt(n, df = nu) 
+      }
+    }
+    # For scat, getTheta() returns c(nu, sigma)
+    th <- fam$getTheta(trans = TRUE) 
+    fam$rd <- make_rd_scat(nu = th[1], sigma = th[2])
+  }
+  
   # return modified family
   fam
 }
@@ -58,7 +70,7 @@
   if (!is.null(family$cdf)) {
     return(family)
   }
-
+  
   # handle special cases
   ft <- family_type(family)
   theta <- NULL
@@ -69,7 +81,7 @@
     }
     theta <- theta(family, transform = transf)
   }
-
+  
   # choose a CDF functions
   qfun <- switch(
     EXPR = ft,
@@ -84,15 +96,15 @@
     "tweedie"  = make_cdf_tw(theta, ab = get_tw_ab(family)),
     NULL
   )
-
+  
   # add the CDF fun to the family
   family$cdf <- qfun
-
+  
   # don't think we need to throw and error - fix.family.rd doesn't
   #if (is.null(family$cdf)) {
   #  stop("No CDF functions available for this family")
   #}
-
+  
   # return
   family
 }
@@ -206,4 +218,52 @@
     )
   }
 }
-#test
+
+
+
+
+#' @importFrom stats qt
+`make_qf_scat` <- function(nu, sigma) {
+  function(p, mu, wt, scale, lower_tail = TRUE, log_p = FALSE) {
+    # qt() trouve le quantile standard, puis on décale (mu) et on met à l'échelle (sigma)
+    mu + sigma * qt(
+      p,
+      df = nu,
+      lower.tail = lower_tail,
+      log.p = log_p
+    )
+  }
+}
+
+# 
+
+`fix_family_qf` <- function(family) {
+  
+  # 1. On vérifie si mgcv gère déjà le quantile pour cette famille
+  fam <- mgcv::fix.family.qf(family)
+  if (!is.null(fam$qf)) {
+    return(fam)
+  }
+  
+  # 2. On extrait les paramètres (les degrés de liberté et l'échelle)
+  ft <- family_type(fam)
+  theta <- NULL
+  if (has_theta(fam)) {
+    transf <- TRUE
+    if (ft %in% c("tweedie")) {
+      transf <- FALSE
+    }
+    theta <- theta(fam, transform = transf)
+  }
+  
+  # 3. On choisit la bonne fonction quantile selon le nom de la famille
+  qfun <- switch(
+    EXPR = ft,
+    "scaled_t" = make_qf_scat(nu = theta[1], sigma = theta[2]),
+    NULL
+  )
+  
+  # 4. On attache la fonction au modèle et on retourne
+  fam$qf <- qfun
+  fam
+}
