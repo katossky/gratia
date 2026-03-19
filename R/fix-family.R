@@ -47,6 +47,7 @@
     tw_pars <- get_tw_ab(fam)
     fam$rd <- rd_twlss(a = tw_pars[1], b = tw_pars[2])
   }
+  #added by mansour 
   if (identical(fn, "scaled t") || identical(fn, "scat")) {
     # mgcv sometimes uses "scaled t" or "scat" as the family name
     make_rd_scat <- function(nu, sigma) {
@@ -220,7 +221,7 @@
 }
 
 
-
+#added by mansour 
 
 #' @importFrom stats qt
 `make_qf_scat` <- function(nu, sigma) {
