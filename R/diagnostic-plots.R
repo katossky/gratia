@@ -156,7 +156,8 @@
     method <- "uniform"
   }
   ## check if we can do the method
-  ff_qf <- fix.family.qf(family(model))[["qf"]]
+  #ff_qf <- fix.family.qf(family(model))[["qf"]]
+  ff_qf <- fix_family_qf(family(model))[["qf"]]
   if (identical(method, "uniform") && is.null(ff_qf)) {
     method <- "simulate"
   }
