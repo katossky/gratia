@@ -242,9 +242,14 @@
 
 #' @importFrom stats qt
 `make_qf_scat` <- function(nu, sigma) {
-  function(p, mu, wt, scale, lower.tail = TRUE, log.p = FALSE) {
-    # The inverse of: pt((q - mu) / sigma, df = nu)
-    # is: qt(p, df = nu) * sigma + mu
-    qt(p, df = nu, lower.tail = lower.tail, log.p = log_p) * sigma + mu
+  function(p, mu, wt, scale, log_p = FALSE) {
+    # The inverse of pt((q - mu) / sigma, df = nu) 
+    # is mu + sigma * qt(p, df = nu)
+    stats::qt(
+      p, 
+      df = nu, 
+      lower.tail = TRUE, 
+      log.p = log_p
+    ) * sigma + mu
   }
 }
