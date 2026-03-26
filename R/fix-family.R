@@ -206,3 +206,45 @@
     )
   }
 }
+
+`fix_family_qf` <- function(family) {
+  # 1. Consistency Check: If it's not NULL, don't touch it
+  if (!is.null(family$qf)) {
+    return(family)
+  }
+  
+  # 2. Identify the distribution type
+  ft <- family_type(family)
+  theta <- NULL
+  
+  # 3. Extract Parameters (Theta) - Matches Author's Transform Logic
+  if (has_theta(family)) {
+    transf <- TRUE
+    if (ft %in% c("tweedie")) { 
+      transf <- FALSE
+    }
+    theta <- theta(family, transform = transf)
+  }
+  
+  # 4. The Switch: Assign the Quantile Function
+  qfun <- switch(
+    EXPR = ft,
+    "scaled_t"          = make_qf_scat(nu = theta[1], sigma = theta[2]), # Factory
+     NULL
+  )
+  
+  # 5. Attach the function to the family object
+  family$qf <- qfun
+  
+  # 6. Return the modified family
+  family
+}
+
+#' @importFrom stats qt
+`make_qf_scat` <- function(nu, sigma) {
+  function(p, mu, wt, scale, lower.tail = TRUE, log.p = FALSE) {
+    # The inverse of: pt((q - mu) / sigma, df = nu)
+    # is: qt(p, df = nu) * sigma + mu
+    qt(p, df = nu, lower.tail = lower.tail, log.p = log_p) * sigma + mu
+  }
+}
