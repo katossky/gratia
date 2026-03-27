@@ -82,7 +82,7 @@
     ## "inverse_gaussian"  = cdf_invgaussian, # FIXME: not sure I trust this yet
     "beta_regression"   = make_cdf_beta(theta),
     "tweedie"  = make_cdf_tw(theta, ab = get_tw_ab(family)),
-    "gaulss"   = make_cdf_gaulss()
+    "gaulss"   = make_cdf_gaulss(),
     NULL
   )
 
@@ -249,6 +249,7 @@
   qfun <- switch(
     EXPR = ft,
     "scaled_t"          = make_qf_scat(nu = theta[1], sigma = theta[2]), # Factory
+    "gaulss"   = make_qf_gaulss(), 
      NULL
   )
   
@@ -270,5 +271,25 @@
       lower.tail = TRUE, 
       log.p = log_p
     ) * sigma + mu
+  }
+}
+#' @importFrom stats qnorm
+`make_qf_gaulss` <- function() {
+  # Returns a quantile function for the gaulss family.
+  # Q(p) = mu[,1] + exp(mu[,2]) * qnorm(p)
+  # mu[, 1] : fitted mean
+  # mu[, 2] : fitted log(sigma)
+  # The location-scale transformation mirrors make_qf_scat but uses
+  # the normal distribution and observation-level sigma.
+  function(p, mu, wt, scale, lower_tail = TRUE, log_p = FALSE) {
+    mean_val  <- mu[, 1]
+    sigma_val <- exp(mu[, 2])
+    stats::qnorm(
+      p,
+      mean       = mean_val,
+      sd         = sigma_val,
+      lower.tail = lower_tail,
+      log.p      = log_p
+    )
   }
 }
