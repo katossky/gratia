@@ -82,6 +82,7 @@
     ## "inverse_gaussian"  = cdf_invgaussian, # FIXME: not sure I trust this yet
     "beta_regression"   = make_cdf_beta(theta),
     "tweedie"  = make_cdf_tw(theta, ab = get_tw_ab(family)),
+    "gaulss"   = make_cdf_gaulss()
     NULL
   )
 
@@ -206,7 +207,25 @@
     )
   }
 }
-
+#' @importFrom stats pnorm
+`make_cdf_gaulss` <- function() {
+  # Returns a CDF function for the gaulss (Gaussian location-scale) family.
+  # gaulss jointly models the mean mu and log(sigma).
+  # mu[, 1] : fitted mean (location parameter)
+  # mu[, 2] : fitted log(sigma), so sigma = exp(mu[, 2])
+  # Unlike gaussian(), scale is not a global scalar but varies per observation.
+  function(q, mu, wt, scale, log_p = FALSE) {
+    # extract mean and sigma from the two-column mu matrix
+    mean_val  <- mu[, 1]
+    sigma_val <- exp(mu[, 2])  # mu[,2] is on log scale
+    stats::pnorm(
+      q,
+      mean   = mean_val,
+      sd     = sigma_val,
+      log.p  = log_p
+    )
+  }
+}
 `fix_family_qf` <- function(family) {
   # 1. Consistency Check: If it's not NULL, don't touch it
   if (!is.null(family$qf)) {
