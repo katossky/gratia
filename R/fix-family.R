@@ -229,6 +229,8 @@
   # 4. The Switch: Assign the Quantile Function
   qfun <- switch(
     EXPR = ft,
+    "poisson"           = qf_poisson,  # Add this!
+    "gaussian"          = qf_gaussian,
     "scaled_t"          = make_qf_scat(nu = theta[1], sigma = theta[2]), # Factory
      NULL
   )
@@ -252,4 +254,15 @@
       log.p = log_p
     ) * sigma + mu
   }
+}
+
+#' @importFrom stats qnorm
+`qf_gaussian` <- function(p, mu, wt, scale, log_p = FALSE) {
+  # Standard deviation is sqrt(dispersion / weights)
+  stats::qnorm(p, mean = mu, sd = sqrt(scale / wt), lower.tail = TRUE, log.p = log_p)
+}
+
+#' @importFrom stats qpois
+`qf_poisson` <- function(p, mu, wt, scale, log_p = FALSE) {
+  stats::qpois(p, lambda = mu, lower.tail = TRUE, log.p = log_p)
 }
