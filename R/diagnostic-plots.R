@@ -156,7 +156,8 @@
     method <- "uniform"
   }
   ## check if we can do the method
-  ff_qf <- fix.family.qf(family(model))[["qf"]]
+  #ff_qf <- fix.family.qf(family(model))[["qf"]]
+  ff_qf <- fix_family_qf(family(model))[["qf"]]
   if (identical(method, "uniform") && is.null(ff_qf)) {
     method <- "simulate"
   }
@@ -411,7 +412,7 @@
                          level = 0.9, detrend = FALSE) {
   type <- match.arg(type)
   family <- family(model) # extract family
-  family <- fix.family.qf(family) # add quantile fun to family
+  family <- fix_family_qf(family) # add quantile fun to family
   dev_resid_fun <- family[["residuals"]] # deviance residuals function
   # If dev_resid_fun is NULL it means it is one of the standard families so
   # copy over the the dev.resids object from the family instead
@@ -874,7 +875,7 @@
   }
   ## check if we can do the method
   if (identical(method, "uniform") &&
-    is.null(fix.family.qf(family(model))[["qf"]])) {
+    is.null(fix_family_qf(family(model))[["qf"]])) {
     method <- "simulate"
   }
   if (identical(method, "simulate") &&

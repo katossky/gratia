@@ -82,6 +82,7 @@
     ## "inverse_gaussian"  = cdf_invgaussian, # FIXME: not sure I trust this yet
     "beta_regression"   = make_cdf_beta(theta),
     "tweedie"  = make_cdf_tw(theta, ab = get_tw_ab(family)),
+    "gaulss"   = make_cdf_gaulss(),
     NULL
   )
 
@@ -205,4 +206,104 @@
       xi = xi
     )
   }
+}
+#' @importFrom stats pnorm
+`make_cdf_gaulss` <- function() {
+  # Returns a CDF function for the gaulss (Gaussian location-scale) family.
+  # gaulss jointly models the mean mu and log(sigma).
+  # mu[, 1] : fitted mean (location parameter)
+  # mu[, 2] : fitted log(sigma), so sigma = exp(mu[, 2])
+  # Unlike gaussian(), scale is not a global scalar but varies per observation.
+  function(q, mu, wt, scale, log_p = FALSE) {
+    # extract mean and sigma from the two-column mu matrix
+    mean_val  <- mu[, 1]
+    sigma_val <- exp(mu[, 2])  # mu[,2] is on log scale
+    stats::pnorm(
+      q,
+      mean   = mean_val,
+      sd     = sigma_val,
+      log.p  = log_p
+    )
+  }
+}
+
+`fix_family_qf` <- function(family) {
+  # 1. Consistency Check: If it's not NULL, don't touch it
+  if (!is.null(family$qf)) {
+    return(family)
+  }
+  
+  # 2. Identify the distribution type
+  ft <- family_type(family)
+  theta <- NULL
+  
+  # 3. Extract Parameters (Theta) 
+  if (has_theta(family)) {
+    transf <- TRUE
+    if (ft %in% c("tweedie")) { 
+      transf <- FALSE
+    }
+    theta <- theta(family, transform = transf)
+  }
+  
+  # 4. The Switch: Assign the Quantile Function
+  qfun <- switch(
+    EXPR = ft,
+    "poisson"           = qf_poisson,  
+    "gaussian"          = qf_gaussian,
+    "scaled_t"          = make_qf_scat(nu = theta[1], sigma = theta[2]), # Factory
+    "gaulss"   = make_qf_gaulss(), 
+     NULL
+  )
+  
+  # 5. Attach the function to the family object
+  family$qf <- qfun
+  
+  # 6. Return the modified family
+  family
+}
+
+#' @importFrom stats qt
+`make_qf_scat` <- function(nu, sigma) {
+  function(p, mu, wt, scale, log_p = FALSE) {
+    # The inverse of pt((q - mu) / sigma, df = nu) 
+    # is mu + sigma * qt(p, df = nu)
+    stats::qt(
+      p, 
+      df = nu, 
+      lower.tail = TRUE, 
+      log.p = log_p
+    ) * sigma + mu
+  }
+}
+#' @importFrom stats qnorm
+`make_qf_gaulss` <- function() {
+  # Returns a quantile function for the gaulss family.
+  # Q(p) = mu[,1] + exp(mu[,2]) * qnorm(p)
+  # mu[, 1] : fitted mean
+  # mu[, 2] : fitted log(sigma)
+  # The location-scale transformation mirrors make_qf_scat but uses
+  # the normal distribution and observation-level sigma.
+  function(p, mu, wt, scale, lower_tail = TRUE, log_p = FALSE) {
+    mean_val  <- mu[, 1]
+    sigma_val <- exp(mu[, 2])
+    stats::qnorm(
+      p,
+      mean       = mean_val,
+      sd         = sigma_val,
+      lower.tail = lower_tail,
+      log.p      = log_p
+    )
+  }
+}
+
+#' @importFrom stats qnorm
+`qf_gaussian` <- function(p, mu, wt, scale, log_p = FALSE) {
+  # Standard deviation is sqrt(dispersion / weights)
+  stats::qnorm(p, mean = mu, sd = sqrt(scale / wt), lower.tail = TRUE, log.p = log_p)
+}
+
+#' @importFrom stats qpois
+`qf_poisson` <- function(p, mu, wt, scale, log_p = FALSE) {
+  stats::qpois(p, lambda = mu, lower.tail = TRUE, log.p = log_p)
 }
