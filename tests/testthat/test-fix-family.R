@@ -43,13 +43,13 @@ test_that("cdf fun works for gamma cdf", {
 })
 
 test_that("fix_family_qf works for scat and basic families", {
-  # Test SCAT 
+# Test SCAT 
   expect_true(is.function(fix_family_qf(mgcv::scat())$qf))
   
-  # Test Gaussian
+# Test Gaussian
   expect_equal(fix_family_qf(gaussian())$qf, qf_gaussian)
   
-  # Test Poisson
+# Test Poisson
   expect_equal(fix_family_qf(poisson())$qf, qf_poisson)
 })
 
