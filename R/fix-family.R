@@ -226,6 +226,7 @@
     )
   }
 }
+
 `fix_family_qf` <- function(family) {
   # 1. Consistency Check: If it's not NULL, don't touch it
   if (!is.null(family$qf)) {
@@ -236,7 +237,7 @@
   ft <- family_type(family)
   theta <- NULL
   
-  # 3. Extract Parameters (Theta) - Matches Author's Transform Logic
+  # 3. Extract Parameters (Theta) 
   if (has_theta(family)) {
     transf <- TRUE
     if (ft %in% c("tweedie")) { 
@@ -248,6 +249,8 @@
   # 4. The Switch: Assign the Quantile Function
   qfun <- switch(
     EXPR = ft,
+    "poisson"           = qf_poisson,  
+    "gaussian"          = qf_gaussian,
     "scaled_t"          = make_qf_scat(nu = theta[1], sigma = theta[2]), # Factory
     "gaulss"   = make_qf_gaulss(), 
      NULL
@@ -292,4 +295,15 @@
       log.p      = log_p
     )
   }
+}
+
+#' @importFrom stats qnorm
+`qf_gaussian` <- function(p, mu, wt, scale, log_p = FALSE) {
+  # Standard deviation is sqrt(dispersion / weights)
+  stats::qnorm(p, mean = mu, sd = sqrt(scale / wt), lower.tail = TRUE, log.p = log_p)
+}
+
+#' @importFrom stats qpois
+`qf_poisson` <- function(p, mu, wt, scale, log_p = FALSE) {
+  stats::qpois(p, lambda = mu, lower.tail = TRUE, log.p = log_p)
 }
